@@ -1,0 +1,17 @@
+Descrição Textual do Jogo
+       Este projeto envolve o desenvolvimento de um jogo de plataforma 2D, onde dois ou mais jogadores podem competir em uma mesma máquina, utilizando o teclado. O jogo será dinâmico, com elementos de ação e estratégia, oferecendo uma experiência envolvente para os jogadores.
+
+Principais Funcionalidades
+
+Multijogador Local: O jogo permitirá que dois ou mais jogadores joguem simultaneamente no mesmo computador, utilizando diferentes conjuntos de teclas do teclado para controlar seus personagens.
+
+Armas Aleatórias : Durante as batalhas, armas irão cair aleatoriamente pelo mapa, criando oportunidades estratégicas para os jogadores. Essas armas podem variar entre espadas, arcos, bombas, e outras.
+
+Seleção de Personagem : Os jogadores poderão escolher o tipo de personagem, optando entre um avatar feminino ou masculino, conforme sua preferência.
+
+Escolha de Campeões : Antes da luta, cada jogador escolherá um campeão com habilidades únicas, como assassino, lutador ou arqueiro. Cada campeão terá atributos e estilos de luta distintos, proporcionando variedade nas partidas.
+
+Mapas de Luta Variados : O jogo oferecerá uma variedade de mapas de luta, cada um com características únicas, como plataformas móveis, armadilhas, ou terrenos irregulares, garantindo que cada partida seja uma nova experiência.
+
+Sistema de Rounds : As lutas serão divididas em 3 rounds. O vencedor de dois rounds será declarado o campeão da partida..
+Sistema de Vidas Igualitário: Cada jogador começará com um número igual de vidas, criando uma partida justa e equilibrada.

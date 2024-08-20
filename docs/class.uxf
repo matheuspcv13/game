@@ -1,0 +1,40 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><help_text>Space for diagram notes</help_text><element><id>UMLClass</id><coordinates><x>120</x><y>90</y><w>210</w><h>190</h></coordinates><panel_attributes>JOGO
+--
+-maps: List
+-jogadores: tuple(a, b)
+-roud_atual: int
+--
+iniciar(): void
+end_round(): void
+declarar_vencedor(): void
+salvar_personagem(): void
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>630</x><y>90</y><w>210</w><h>190</h></coordinates><panel_attributes>JOGADOR
+--
+-nome: string
+-campeao: Campeao
+-vidas: int
+-pontos: int
+--
+mover(): void
+atacar(): void
+coletar_armas( arma: Arma ): void
+receber_dano( dano: int ): void
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>430</x><y>350</y><w>210</w><h>200</h></coordinates><panel_attributes>STATUS
+--
+-nome: string
+-tipo: string
+-dano: int
+-vida: int
+--
+causar_dano(): void
+aumentar_vida(): void</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>110</x><y>650</y><w>210</w><h>190</h></coordinates><panel_attributes>CAMPEAO
+--
+-nome: string
+-tipo: string
+-
+personalizar(): tuple(x, y, z)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>660</x><y>650</y><w>210</w><h>190</h></coordinates><panel_attributes>ARMA
+--
+-nome: string
+-tipo: string
+--
+usar(): void</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>320</x><y>160</y><w>330</w><h>40</h></coordinates><panel_attributes></panel_attributes><additional_attributes>10;20;310;20</additional_attributes></element><element><id>Relation</id><coordinates><x>310</x><y>540</y><w>160</w><h>220</h></coordinates><panel_attributes>lt=&lt;&lt;-</panel_attributes><additional_attributes>140;10;140;200;10;200</additional_attributes></element><element><id>Relation</id><coordinates><x>560</x><y>540</y><w>120</w><h>230</h></coordinates><panel_attributes>lt=&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;210;100;210</additional_attributes></element><element><id>Relation</id><coordinates><x>200</x><y>270</y><w>40</w><h>400</h></coordinates><panel_attributes></panel_attributes><additional_attributes>20;10;10;380</additional_attributes></element><element><id>Relation</id><coordinates><x>800</x><y>270</y><w>40</w><h>400</h></coordinates><panel_attributes></panel_attributes><additional_attributes>10;10;20;380</additional_attributes></element></diagram>
