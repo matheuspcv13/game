@@ -1,9 +1,7 @@
-import pygame
+import pygame, random
 import sys
 from personagens import Personagem
-from armas import Arma
-from mapas import Mapa
-from utilidades import carregar_imagem, carregar_som
+from utilidades import carregar_imagem
 
 # Inicialização do Pygame
 pygame.init()
@@ -15,68 +13,44 @@ FPS = 60
 
 # Cores
 PRETO = (0, 0, 0)
-BRANCO = (255, 255, 255)
 
 # Configuração da Tela
 tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
-pygame.display.set_caption("Jogo de Plataforma 2D")
+pygame.display.set_caption("Mostrar Personagem")
 
 # Relógio para controlar a taxa de quadros
 relogio = pygame.time.Clock()
 
-# Carregar recursos
-imagem_fundo = carregar_imagem('assets/imagens/fundo.png')  # Imagem de fundo
-
-# Carregar imagens e animações para o primeiro personagem
+# Carregar imagem do personagem
 imagem_personagem = carregar_imagem('assets/imagens/personagem.png')
-imagem_idle = carregar_imagem('assets/imagens/idle.png')
-imagem_jump = carregar_imagem('assets/imagens/jump.png')
-imagem_run = carregar_imagem('assets/imagens/run.png')
-
-# Carregar imagens e animações para o segundo personagem
 imagem_personagem2 = carregar_imagem('assets/imagens/personagem2.png')
-imagem_idle2 = carregar_imagem('assets/imagens/idle2.png')
-imagem_jump2 = carregar_imagem('assets/imagens/jump2.png')
-imagem_run2 = carregar_imagem('assets/imagens/run2.png')
-
-# Redimensionar a imagem de fundo para caber na tela
+# Carregar imagem de fundo
+imagem_fundo = carregar_imagem('assets/imagens/fundo.png')
 if imagem_fundo is not None:
     imagem_fundo = pygame.transform.scale(imagem_fundo, (LARGURA_TELA, ALTURA_TELA))
 else:
     print("Erro ao carregar a imagem de fundo.")
+    pygame.quit()
+    sys.exit()
+  
 
 # Função principal do jogo
 def jogo():
-    fonte = pygame.font.Font(None, 36)
     executar = True
 
     # Criar grupos de sprites
     todos_sprites = pygame.sprite.Group()
     personagens = pygame.sprite.Group()
-    armas = pygame.sprite.Group()
 
-    # Adicionar personagens
-    animações_jogador1 = [
-        [imagem_idle],  # Idle
-        [imagem_run],   # Run
-        [imagem_jump]   # Jump
-    ]
-    jogador1 = Personagem(100, 100, (255, 0, 0), 100, 100, imagem_personagem, animações_jogador1)
+    # Adicionar personagem
+    jogador1 = Personagem(100, 300, 100, 155, imagem_personagem)
+    personagens.add(jogador1)
+    todos_sprites.add(jogador1)
 
-    animações_jogador2 = [
-        [imagem_idle2],  # Idle
-        [imagem_run2],   # Run
-        [imagem_jump2]   # Jump
-    ]
-    jogador2 = Personagem(300, 100, (0, 0, 255), 100, 100, imagem_personagem2, animações_jogador2)
-
-    personagens.add(jogador1, jogador2)
-    todos_sprites.add(jogador1, jogador2)
-
-    # Adicionar armas
-    # espada = Arma(200, 200, imagem_arma)
-    # armas.add(espada)
-    # todos_sprites.add(espada)
+    # Adicionar personagem
+    jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2)
+    personagens.add(jogador2)
+    todos_sprites.add(jogador2)
 
     while executar:
         for evento in pygame.event.get():
@@ -86,38 +60,55 @@ def jogo():
         
         # Atualizar
         keys = pygame.key.get_pressed()
-        jogador1.mover(keys)
-        jogador2.mover(keys)
+        jogador1.mover(keys, '1')
 
-        # Atualizar armas
-        for arma in armas:
-            arma.atualizar()
+        eys = pygame.key.get_pressed()
+        jogador2.mover(keys, '2')
+
+
+        if pygame.sprite.collide_rect(jogador1, jogador2):
+            print("Colisão detectada!")
+            # Reverter movimento para evitar sobreposição
+            if jogador1.rect.colliderect(jogador2.rect):
+                # Colisão pela direita do jogador1
+                if jogador1.rect.right > jogador2.rect.left and jogador1.rect.left < jogador2.rect.left:
+                    jogador1.rect.right = jogador2.rect.left
+                # Colisão pela esquerda do jogador1
+                elif jogador1.rect.left < jogador2.rect.right and jogador1.rect.right > jogador2.rect.right:
+                    jogador1.rect.left = jogador2.rect.right
+                # Colisão por baixo do jogador1
+                elif jogador1.rect.bottom > jogador2.rect.top and jogador1.rect.top < jogador2.rect.top:
+                    jogador1.rect.bottom = jogador2.rect.top
+                # Colisão por cima do jogador1
+                elif jogador1.rect.top < jogador2.rect.bottom and jogador1.rect.bottom > jogador2.rect.bottom:
+                    jogador1.rect.top = jogador2.rect.bottom
+
+        if pygame.sprite.collide_rect(jogador2, jogador1):
+            print("Colisão 2 detectada!")
+            if jogador2.rect.colliderect(jogador1.rect):
+                if jogador2.rect.right > jogador1.rect.left and jogador2.rect.left < jogador1.rect.left:
+                    jogador2.rect.right = jogador1.rect.left
+                elif jogador2.rect.left < jogador1.rect.right and jogador2.rect.right > jogador1.rect.right:
+                    jogador2.rect.left = jogador1.rect.right
+                elif jogador2.rect.bottom > jogador1.rect.top and jogador2.rect.top < jogador1.rect.top:
+                    jogador2.rect.bottom = jogador1.rect.top
+                elif jogador2.rect.top < jogador1.rect.bottom and jogador2.rect.bottom > jogador1.rect.bottom:
+                    jogador2.rect.top = jogador1.rect.bottom
 
         # Limpar a tela
-        tela.fill(PRETO)  # Opcional, pode ser removido se usar fundo
+        tela.fill(PRETO)
 
         # Desenhar o fundo
-        if imagem_fundo is not None:
-            tela.blit(imagem_fundo, (0, 0))  # Desenha a imagem de fundo no canto superior esquerdo
+        tela.blit(imagem_fundo, (0, 0))
 
         # Desenhar todos os sprites
         todos_sprites.draw(tela)
-        
-        # Desenhar texto
-        desenhar_texto("Bem-vindo ao Jogo!", fonte, BRANCO, tela, LARGURA_TELA // 2, ALTURA_TELA // 2)
         
         # Atualizar a tela
         pygame.display.flip()
         
         # Manter a taxa de quadros
         relogio.tick(FPS)
-
-# Função para desenhar o texto na tela
-def desenhar_texto(texto, fonte, cor, superficie, x, y):
-    texto_surface = fonte.render(texto, True, cor)
-    texto_rect = texto_surface.get_rect()
-    texto_rect.center = (x, y)
-    superficie.blit(texto_surface, texto_rect)
 
 # Rodar o jogo
 if __name__ == "__main__":
