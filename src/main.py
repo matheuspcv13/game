@@ -33,6 +33,8 @@ else:
     pygame.quit()
     sys.exit()
   
+pygame.mixer.music.load('../assets/sounds/musica_fundo.mp3')  # Substitua 'seu_som.ogg' pelo nome do seu arquivo de som
+pygame.mixer.music.play(loops=-1) 
 
 # Função principal do jogo
 def jogo():
