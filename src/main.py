@@ -1,3 +1,4 @@
+#jogo
 import pygame, random
 import sys
 from personagens import Personagem
