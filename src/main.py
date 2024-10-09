@@ -1,4 +1,4 @@
-#jogo
+#jogo TAC
 import pygame, random
 import sys
 from personagens import Personagem
