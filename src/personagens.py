@@ -95,3 +95,18 @@ class Personagem(pygame.sprite.Sprite):
             self.rect.bottom = pygame.display.get_surface().get_height()
             self.velocity_y = 0
             self.on_ground = True  # Personagem está no chão
+
+    def verificar_colisao(self, outro):
+        """Verifica a colisão com outro personagem usando máscaras."""
+        if pygame.sprite.collide_mask(self, outro):
+            print("Colisão com máscara detectada!")
+            # Ajustar posição com base na direção da colisão
+            if self.rect.right > outro.rect.left and self.rect.left < outro.rect.left:
+                self.rect.right = outro.rect.left
+            elif self.rect.left < outro.rect.right and self.rect.right > outro.rect.right:
+                self.rect.left = outro.rect.right
+            if self.rect.bottom > outro.rect.top and self.rect.top < outro.rect.top:
+                self.rect.bottom = outro.rect.top
+                self.velocity_y = 0  # Zera a velocidade vertical ao colidir no topo
+            elif self.rect.top < outro.rect.bottom and self.rect.bottom > outro.rect.bottom:
+                self.rect.top = outro.rect.bottom

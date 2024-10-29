@@ -1,6 +1,7 @@
 # jogo TAC
 import pygame 
 import sys
+import sqlite3
 from personagens import Personagem
 from utilidades import carregar_imagem
 
@@ -25,12 +26,77 @@ pygame.display.set_caption("Mostrar Personagem")
 # Relógio para controlar a taxa de quadros
 relogio = pygame.time.Clock()
 
+# Conexão com o banco de dados SQLite
+def conectar_db():
+    conn = sqlite3.connect('vencedores.db')
+    cursor = conn.cursor()
+    # Criar tabela se não existir
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS vencedores (
+        id INTEGER PRIMARY KEY,
+        nome TEXT NOT NULL
+    )
+    ''')
+    conn.commit()
+    return conn, cursor
+
+# Função para salvar o nome do vencedor no banco de dados
+def salvar_vencedor(cursor, nome):
+    cursor.execute("INSERT INTO vencedores (nome) VALUES (?)", (nome,))
+    cursor.connection.commit()  # Certifica-se de que as alterações sejam salvas
+
+# Função para exibir a tela de nome do vencedor
+def tela_nome_vencedor(cursor):
+    nome = ""
+    fonte = pygame.font.Font(None, 74)
+    input_box = pygame.Rect(LARGURA_TELA // 2 - 100, ALTURA_TELA // 2, 200, 50)
+
+    while True:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_RETURN and nome:  # Salvar somente se o nome não estiver vazio
+                    salvar_vencedor(cursor, nome)
+                    return  # Sai da tela de entrada do nome
+                elif evento.key == pygame.K_BACKSPACE:
+                    nome = nome[:-1]
+                else:
+                    nome += evento.unicode
+
+        # Atualizar tela
+        tela.fill(PRETO)
+        txt_surface = fonte.render(nome, True, BRANCO)
+        width = max(200, txt_surface.get_width() + 10)
+        input_box.w = width
+        tela.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+        pygame.draw.rect(tela, BRANCO, input_box, 2)
+
+        # Mensagem
+        msg_surface = fonte.render("Digite seu nome:", True, BRANCO)
+        tela.blit(msg_surface, (LARGURA_TELA // 2 - 100, ALTURA_TELA // 2 - 50))
+
+        pygame.display.flip()
+        relogio.tick(FPS)
+
+# Função para mostrar a tela de Game Over
+def mostrar_game_over(screen, vencedor):
+    fonte = pygame.font.Font(None, 74)
+    texto_game_over = fonte.render("GAME OVER", True, BRANCO)
+    texto_vencedor = fonte.render(f"Vencedor: {vencedor}", True, BRANCO)
+    texto_rect = texto_game_over.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 - 40))
+    vencedor_rect = texto_vencedor.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 + 40))
+
+    screen.blit(texto_game_over, texto_rect)
+    screen.blit(texto_vencedor, vencedor_rect)
+    pygame.display.flip()
+    pygame.time.wait(2000)  # Espera 2 segundos antes de chamar a tela de nome
+
 # Carregar imagens do personagem e do ataque
 imagem_personagem = carregar_imagem('assets/imagens/personagem.png')
 imagem_personagem_ataque = carregar_imagem('assets/imagens/personagem_ataque.png')
 imagem_personagem2 = carregar_imagem('assets/imagens/personagem2.png')
-imagem_personagem2_ataque = carregar_imagem('assets/imagens/personagem2_ataque.png')
-
 imagem_personagem2_ataque = pygame.transform.flip(carregar_imagem('assets/imagens/personagem2_ataque.png'), True, False)
 
 # Carregar imagem de fundo
@@ -56,11 +122,12 @@ def draw_life_bar(screen, x, y, vida):
     border_inner = pygame.Rect(x, y, largura_barra, altura_barra)
     pygame.draw.rect(screen, BRANCO, border_inner, 2)
 
-def jogo():
+def jogo(conn, cursor):
     executar = True
     todos_sprites = pygame.sprite.Group()
     personagens = pygame.sprite.Group()
 
+    # Inicializar personagens
     jogador1 = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
     jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
     personagens.add(jogador1, jogador2)
@@ -72,15 +139,18 @@ def jogo():
                 pygame.quit()
                 sys.exit()
 
+        # Captura de teclas
         keys = pygame.key.get_pressed()
         jogador1.mover(keys, '1')
         jogador2.mover(keys, '2')
 
+        # Atualizar personagens (gravidade e limites da tela)
         jogador1.update(ALTURA_TELA)
         jogador2.update(ALTURA_TELA)
 
         # Detectar colisão usando máscaras
         if pygame.sprite.collide_mask(jogador1, jogador2):
+            print("Colisão com máscara detectada!")  # Debug de console
             if jogador1.atacando:
                 jogador2.vida -= 10
                 jogador1.finalizar_ataque()
@@ -102,10 +172,34 @@ def jogo():
 
         # Desenhar todos os sprites
         todos_sprites.draw(tela)
-        
-        # Desenhar barras de vida fixas no topo da tela
+
+        # Debug visual: desenhar retângulos de colisão e contornos das máscaras
+        for personagem in personagens:
+            # Desenhar o retângulo da imagem
+            pygame.draw.rect(tela, (0, 255, 0), personagem.rect, 1)  # Verde para o rect da imagem
+
+            # Desenhar o contorno da máscara
+            if personagem.mask:
+                offset = (personagem.rect.left, personagem.rect.top)
+                for point in personagem.mask.outline():
+                    pygame.draw.circle(tela, (255, 0, 0), (point[0] + offset[0], point[1] + offset[1]), 1)  # Pontos da máscara em vermelho
+
+        # Desenhar barras de vida no topo da tela
         draw_life_bar(tela, 50, 20, jogador1.vida)
         draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
+
+        # Verificar se algum jogador perdeu
+        if jogador1.vida <= 0:
+            print("Jogador 1 perdeu!")  # Debug de console
+            mostrar_game_over(tela, "Jogador 2")  # Passa o vencedor
+            tela_nome_vencedor(cursor)  # Chama a tela para digitar o nome
+            executar = False  # Sai do loop principal
+
+        if jogador2.vida <= 0:
+            print("Jogador 2 perdeu!")  # Debug de console
+            mostrar_game_over(tela, "Jogador 1")  # Passa o vencedor
+            tela_nome_vencedor(cursor)  # Chama a tela para digitar o nome
+            executar = False  # Sai do loop principal
 
         # Atualizar a tela
         pygame.display.flip()
@@ -114,4 +208,10 @@ def jogo():
         relogio.tick(FPS)
 
 if __name__ == "__main__":
-    jogo()
+    # Conectar ao banco de dados
+    conn, cursor = conectar_db()
+    try:
+        jogo(conn, cursor)
+    finally:
+        # Fechar conexão com o banco de dados ao final do jogo
+        conn.close()
