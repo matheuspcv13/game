@@ -15,3 +15,4 @@ def carregar_som(caminho):
     except pygame.error as e:
         print(f"Erro ao carregar som: {e}")
         return None
+    
