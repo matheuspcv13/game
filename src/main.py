@@ -1,12 +1,14 @@
 # jogo TAC
 import pygame 
 import sys
-import sqlite3
 from personagens import Personagem
 from utilidades import carregar_imagem
+from database import Database
 
 # Inicialização do Pygame
 pygame.init()
+
+info_tela = pygame.display.Info()
 
 # Configurações da Tela
 LARGURA_TELA = 800
@@ -26,27 +28,8 @@ pygame.display.set_caption("Mostrar Personagem")
 # Relógio para controlar a taxa de quadros
 relogio = pygame.time.Clock()
 
-# Conexão com o banco de dados SQLite
-def conectar_db():
-    conn = sqlite3.connect('vencedores.db')
-    cursor = conn.cursor()
-    # Criar tabela se não existir
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS vencedores (
-        id INTEGER PRIMARY KEY,
-        nome TEXT NOT NULL
-    )
-    ''')
-    conn.commit()
-    return conn, cursor
-
-# Função para salvar o nome do vencedor no banco de dados
-def salvar_vencedor(cursor, nome):
-    cursor.execute("INSERT INTO vencedores (nome) VALUES (?)", (nome,))
-    cursor.connection.commit()  # Certifica-se de que as alterações sejam salvas
-
 # Função para exibir a tela de nome do vencedor
-def tela_nome_vencedor(cursor):
+def tela_nome_vencedor():
     nome = ""
     fonte = pygame.font.Font(None, 74)
     input_box = pygame.Rect(LARGURA_TELA // 2 - 100, ALTURA_TELA // 2, 200, 50)
@@ -57,9 +40,9 @@ def tela_nome_vencedor(cursor):
                 pygame.quit()
                 sys.exit()
             if evento.type == pygame.KEYDOWN:
-                if evento.key == pygame.K_RETURN and nome:  # Salvar somente se o nome não estiver vazio
-                    salvar_vencedor(cursor, nome)
-                    return  # Sai da tela de entrada do nome
+                if evento.key == pygame.K_RETURN and nome:
+                    db.salvar_vencedor(nome)
+                    return
                 elif evento.key == pygame.K_BACKSPACE:
                     nome = nome[:-1]
                 else:
@@ -122,7 +105,9 @@ def draw_life_bar(screen, x, y, vida):
     border_inner = pygame.Rect(x, y, largura_barra, altura_barra)
     pygame.draw.rect(screen, BRANCO, border_inner, 2)
 
-def jogo(conn, cursor):
+def jogo(db):
+
+    db.select_nomes()
     executar = True
     todos_sprites = pygame.sprite.Group()
     personagens = pygame.sprite.Group()
@@ -184,22 +169,21 @@ def jogo(conn, cursor):
                 for point in personagem.mask.outline():
                     pygame.draw.circle(tela, (255, 0, 0), (point[0] + offset[0], point[1] + offset[1]), 1)  # Pontos da máscara em vermelho
 
-        # Desenhar barras de vida no topo da tela
         draw_life_bar(tela, 50, 20, jogador1.vida)
         draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
 
         # Verificar se algum jogador perdeu
         if jogador1.vida <= 0:
-            print("Jogador 1 perdeu!")  # Debug de console
-            mostrar_game_over(tela, "Jogador 2")  # Passa o vencedor
-            tela_nome_vencedor(cursor)  # Chama a tela para digitar o nome
-            executar = False  # Sai do loop principal
+            print("Jogador 1 perdeu!")
+            mostrar_game_over(tela, "Jogador 2")
+            tela_nome_vencedor()  # Chama a tela para digitar o nome
+            executar = False
 
         if jogador2.vida <= 0:
-            print("Jogador 2 perdeu!")  # Debug de console
-            mostrar_game_over(tela, "Jogador 1")  # Passa o vencedor
-            tela_nome_vencedor(cursor)  # Chama a tela para digitar o nome
-            executar = False  # Sai do loop principal
+            print("Jogador 2 perdeu!")
+            mostrar_game_over(tela, "Jogador 1")
+            tela_nome_vencedor()
+            executar = False
 
         # Atualizar a tela
         pygame.display.flip()
@@ -208,10 +192,9 @@ def jogo(conn, cursor):
         relogio.tick(FPS)
 
 if __name__ == "__main__":
-    # Conectar ao banco de dados
-    conn, cursor = conectar_db()
+    db = Database()
     try:
-        jogo(conn, cursor)
+        jogo(db)
     finally:
         # Fechar conexão com o banco de dados ao final do jogo
-        conn.close()
+        db.fechar_conexao()

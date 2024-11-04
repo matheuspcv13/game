@@ -21,7 +21,7 @@ class Personagem(pygame.sprite.Sprite):
         self.estado_atual = 0
         self.velocity_y = 0
         self.gravity = 0.5
-        self.jump_speed = -13
+        self.jump_speed = -15
         self.on_ground = False
         self.vida = 100
         self.atacando = False  # Estado de ataque
