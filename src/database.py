@@ -16,24 +16,27 @@ class Database:
         ''')
         self.conn.commit()
 
-    def salvar_vencedor(self, nome):
-        self.cursor.execute("INSERT INTO vencedores (nome, wins) VALUES (?, 1)", (nome,))
-        self.conn.commit()
-        
-        self.cursor.execute("SELECT nome FROM vencedores WHERE nome = ?", (nome,))
-        novo_jogador = self.cursor.fetchall()
-        
-        
-        print(novo_jogador)
+    def salvar_vencedor(self, vencedor, nome):
+        nome = nome.strip()
 
+        self.cursor.execute("SELECT * FROM vencedores WHERE nome = ?", (nome,))
+        resultado = self.cursor.fetchone()
+
+        if resultado: 
+            self.cursor.execute("UPDATE vencedores SET wins = wins + 1 WHERE nome = ?", (nome,))
+        else:
+            # Se o nome não existe, insere um novo registro
+            self.cursor.execute("INSERT INTO vencedores (nome, wins) VALUES (?, ?)", (nome, 1))
+
+        self.conn.commit()
 
     def select_nomes(self):
-        self.cursor.execute("SELECT * FROM vencedores")
+        # Selecionar e exibir todos os vencedores
+        self.cursor.execute("select * from vencedores order by wins desc")
         vencedores = self.cursor.fetchall()
 
-        # Exibir resultados no console
-        for vencedor in vencedores:
-            print(f"ID: {vencedor[0]}, Nome: {vencedor[1]}")
+        return vencedores
 
     def fechar_conexao(self):
+        # Fechar a conexão com o banco de dados
         self.conn.close()

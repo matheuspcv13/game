@@ -1,0 +1,199 @@
+# jogo TAC
+import pygame 
+import sys
+from personagens import Personagem
+from utilidades import carregar_imagem
+from database import Database
+
+# Inicialização do Pygame
+pygame.init()
+
+info_tela = pygame.display.Info()
+
+# Configurações da Tela
+LARGURA_TELA = 800
+ALTURA_TELA = 600
+FPS = 60
+
+# Cores
+PRETO = (0, 0, 0)
+BRANCO = (255, 255, 255) 
+VERDE = (0, 255, 0) 
+VERMELHO = (255, 0, 0)
+
+# Configuração da Tela
+tela = pygame.display.set_mode((LARGURA_TELA, ALTURA_TELA))
+pygame.display.set_caption("Mostrar Personagem")
+
+# Relógio para controlar a taxa de quadros
+relogio = pygame.time.Clock()
+
+def tela_digitar_nome(screen, vencedor, db):
+    fonte = pygame.font.Font(None, 50)
+    input_box = pygame.Rect(LARGURA_TELA // 2 - 150, ALTURA_TELA // 2, 300, 50)
+    color_inactive = pygame.Color('white')
+    color_active = pygame.Color('dodgerblue2')
+    color = color_inactive
+    active = True
+    text = ''
+    txt_surface = fonte.render(text, True, color)
+    screen.fill(PRETO)
+
+    # Título
+    titulo = fonte.render(f"Parabéns, {vencedor}!", True, BRANCO)
+    screen.blit(titulo, (LARGURA_TELA // 2 - titulo.get_width() // 2, ALTURA_TELA // 4))
+
+    # Texto de Instrução
+    instrucao = fonte.render("", True, BRANCO)
+    screen.blit(instrucao, (LARGURA_TELA // 2 - instrucao.get_width() // 2, ALTURA_TELA // 3 + 100))
+
+    # Desenha a caixa de texto
+    pygame.draw.rect(screen, color, input_box, 2)
+    screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+    pygame.display.flip()
+
+    while True:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                if input_box.collidepoint(evento.pos):
+                    active = True
+                    color = color_active
+                else:
+                    active = False
+                    color = color_inactive
+
+            if evento.type == pygame.KEYDOWN:
+                if active:
+                    if evento.key == pygame.K_RETURN:  # Quando pressionar Enter, salva o nome
+                        # Chama a função de salvar ou atualizar o vencedor
+                        db.salvar_vencedor(vencedor, text)
+                        return "tela_inicial"
+                    elif evento.key == pygame.K_BACKSPACE:
+                        text = text[:-1]
+                    else:
+                        text += evento.unicode
+
+                txt_surface = fonte.render(text, True, color)
+                screen.fill(PRETO)
+                screen.blit(titulo, (LARGURA_TELA // 2 - titulo.get_width() // 2, ALTURA_TELA // 4))
+                screen.blit(instrucao, (LARGURA_TELA // 2 - instrucao.get_width() // 2, ALTURA_TELA // 3 + 100))
+                pygame.draw.rect(screen, color, input_box, 2)
+                screen.blit(txt_surface, (input_box.x + 5, input_box.y + 5))
+
+                pygame.display.flip()
+
+# Carregar imagens do personagem e do ataque
+imagem_personagem = carregar_imagem('assets/imagens/personagem.png')
+imagem_personagem_ataque = carregar_imagem('assets/imagens/personagem_ataque.png')
+imagem_personagem2 = carregar_imagem('assets/imagens/personagem2.png')
+imagem_personagem2_ataque = pygame.transform.flip(carregar_imagem('assets/imagens/personagem2_ataque.png'), True, False)
+
+# Carregar imagem de fundo
+imagem_fundo = carregar_imagem('assets/imagens/fundo.png')
+if imagem_fundo is not None:
+    imagem_fundo = pygame.transform.scale(imagem_fundo, (LARGURA_TELA, ALTURA_TELA))
+else:
+    pygame.quit()
+    sys.exit()
+
+pygame.mixer.music.load('../assets/sounds/musica_fundo.mp3')
+pygame.mixer.music.play(loops=-1)
+
+def draw_life_bar(screen, x, y, vida):
+    largura_barra = 200
+    altura_barra = 15
+    fill_width = (vida / 100) * largura_barra
+    border_rect = pygame.Rect(x - 2, y - 2, largura_barra + 4, altura_barra + 4)
+    pygame.draw.rect(screen, PRETO, border_rect)
+    fill_rect = pygame.Rect(x, y, fill_width, altura_barra)
+    pygame.draw.rect(screen, VERDE if vida > 30 else VERMELHO, fill_rect)
+    border_inner = pygame.Rect(x, y, largura_barra, altura_barra)
+    pygame.draw.rect(screen, BRANCO, border_inner, 2)
+
+def jogo(db):
+
+    db.select_nomes()
+    executar = True
+    todos_sprites = pygame.sprite.Group()
+    personagens = pygame.sprite.Group()
+
+    # Inicializar personagens
+    jogador1 = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
+    jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
+    personagens.add(jogador1, jogador2)
+    todos_sprites.add(jogador1, jogador2)
+
+    while executar:
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+        # Captura de teclas
+        keys = pygame.key.get_pressed()
+        jogador1.mover(keys, '1')
+        jogador2.mover(keys, '2')
+
+        # Atualizar personagens (gravidade e limites da tela)
+        jogador1.update(ALTURA_TELA)
+        jogador2.update(ALTURA_TELA)
+
+        # Detectar colisão usando máscaras
+        if pygame.sprite.collide_mask(jogador1, jogador2):
+            if jogador1.atacando:
+                jogador2.vida -= 10
+                jogador1.finalizar_ataque()
+            elif jogador2.atacando:
+                jogador1.vida -= 10
+                jogador2.finalizar_ataque()
+            else:
+                # Reverter posição para impedir sobreposição
+                if jogador1.rect.right > jogador2.rect.left and jogador1.rect.left < jogador2.rect.left:
+                    jogador1.rect.right = jogador2.rect.left
+                elif jogador1.rect.left < jogador2.rect.right and jogador1.rect.right > jogador2.rect.right:
+                    jogador1.rect.left = jogador2.rect.right
+
+        # Limpar a tela
+        tela.fill(PRETO)
+
+        # Desenhar o fundo
+        tela.blit(imagem_fundo, (0, 0))
+
+        # Desenhar todos os sprites
+        todos_sprites.draw(tela)
+
+        # Debug visual: desenhar retângulos de colisão e contornos das máscaras
+        for personagem in personagens:
+            # Desenhar o retângulo da imagem
+            pygame.draw.rect(tela, (0, 255, 0), personagem.rect, 1)  # Verde para o rect da imagem
+
+            # Desenhar o contorno da máscara
+            if personagem.mask:
+                offset = (personagem.rect.left, personagem.rect.top)
+                for point in personagem.mask.outline():
+                    pygame.draw.circle(tela, (255, 0, 0), (point[0] + offset[0], point[1] + offset[1]), 1)  # Pontos da máscara em vermelho
+
+        draw_life_bar(tela, 50, 20, jogador1.vida)
+        draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
+
+        # Verificar se algum jogador perdeu
+        if jogador1.vida <= 0:
+            resultado = tela_digitar_nome(tela, "Jogador 2", db)
+            if resultado == "tela_inicial":
+                return "tela_inicial"
+
+        if jogador2.vida <= 0:
+            resultado = tela_digitar_nome(tela, "Jogador 1", db)
+            if resultado == "tela_inicial":
+                return "tela_inicial"
+
+        # Atualizar a tela
+        pygame.display.flip()
+        
+        # Manter a taxa de quadros
+        relogio.tick(FPS)
