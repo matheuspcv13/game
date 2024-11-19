@@ -173,8 +173,8 @@ class Personagem(pygame.sprite.Sprite):
             if self.atacando:
                 outro.vida -= 10
                 outro.tempo_piscar = 30
-                outro.rect.x += 20 if self.rect.x < outro.rect.x else -20
-                self.rect.x -= 10 if self.rect.x < outro.rect.x else 10
+                outro.rect.x += 40 if self.rect.x < outro.rect.x else -40
+                self.rect.x -= 20 if self.rect.x < outro.rect.x else 20
                 self.finalizar_ataque()
 
     
