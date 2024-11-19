@@ -32,7 +32,7 @@ class Database:
 
     def select_nomes(self):
         # Selecionar e exibir todos os vencedores
-        self.cursor.execute("select * from vencedores order by wins desc")
+        self.cursor.execute("select * from vencedores order by wins desc limit 10")
         vencedores = self.cursor.fetchall()
 
         return vencedores

@@ -3,6 +3,12 @@ import pygame
 class Personagem(pygame.sprite.Sprite):
     def __init__(self, x, y, largura, altura, imagem, imagem_ataque):
         super().__init__()
+
+        self.ataque_disponivel = True
+        self.tempo_piscar = 0  # Tempo restante para piscar (em quadros)
+        self.contador_piscar = 0  # Contador para alternar visibilidade
+        self.visivel = True  # Determina se o sprite está visível
+
         
         # Definir imagens e máscaras
         self.image_normal = pygame.transform.scale(imagem, (largura, altura))
@@ -20,65 +26,72 @@ class Personagem(pygame.sprite.Sprite):
         self.velocidade = 5
         self.estado_atual = 0
         self.velocity_y = 0
-        self.gravity = 0.5
-        self.jump_speed = -15
+        self.gravity = 0.3  # Gravidade mais baixa para queda mais lenta
+        self.jump_speed = -12  # Impulso maior para pular mais alto
         self.on_ground = False
         self.vida = 100
         self.atacando = False  # Estado de ataque
 
     def iniciar_ataque(self):
         """Ativa o estado de ataque e altera a imagem e máscara para o ataque."""
-        self.atacando = True
-        self.image = self.image_ataque
-        self.mask = self.mask_ataque
-
+        if not self.atacando:  # Garante que só inicia o ataque se não estiver atacando
+            self.atacando = True
+            self.image = self.image_ataque
+            self.mask = self.mask_ataque
+            self.ataque_timer = 10  # Duração do ataque em quadros (ajuste conforme necessário)
     def finalizar_ataque(self):
         """Desativa o estado de ataque e retorna a imagem e máscara para o normal."""
         self.atacando = False
         self.image = self.image_normal
         self.mask = self.mask_normal
 
-    def mover(self, teclas, parametro):
+
+    def mover(self, teclas, parametro, outros_personagens):
         """Controla o movimento e o estado do personagem com base nas teclas pressionadas."""
+        movimento_x = 0
+        movimento_y = 0
+
         # Movimento básico e controle de direção
         if parametro == "1":
             if teclas[pygame.K_a]:
-                self.rect.x -= self.velocidade
-                self.estado_atual = 1  # Estado de corrida
-            
+                movimento_x -= self.velocidade
             if teclas[pygame.K_d]:
-                self.rect.x += self.velocidade
-                self.estado_atual = 1  # Estado de corrida
-        
+                movimento_x += self.velocidade
             if teclas[pygame.K_w] and self.on_ground:
                 self.velocity_y = self.jump_speed
                 self.on_ground = False
-                self.estado_atual = 1  # Estado de pular
 
-            # Inicia o ataque com a tecla 'espaco'
-            if teclas[pygame.K_SPACE]:
+            if teclas[pygame.K_SPACE] and self.ataque_disponivel:
                 self.iniciar_ataque()
-            else:
-                self.finalizar_ataque()  # Finaliza o ataque ao soltar a tecla
         else:
             if teclas[pygame.K_LEFT]:
-                self.rect.x -= self.velocidade
-                self.estado_atual = 1  # Estado de corrida
-            
+                movimento_x -= self.velocidade
             if teclas[pygame.K_RIGHT]:
-                self.rect.x += self.velocidade
-                self.estado_atual = 1  # Estado de corrida
-        
+                movimento_x += self.velocidade
             if teclas[pygame.K_UP] and self.on_ground:
                 self.velocity_y = self.jump_speed
                 self.on_ground = False
-                self.estado_atual = 1  # Estado de pular
 
-            # Inicia o ataque com a tecla 'p'
-            if teclas[pygame.K_p]:
+            if teclas[pygame.K_p] and self.ataque_disponivel:
                 self.iniciar_ataque()
-            else:
-                self.finalizar_ataque()  # Finaliza o ataque ao soltar a tecla
+
+        # Aplica movimento no eixo X e verifica colisões
+        self.rect.x += movimento_x
+        for outro in outros_personagens:
+            if pygame.sprite.collide_mask(self, outro):
+                # Reverte movimento em caso de colisão
+                self.rect.x -= movimento_x
+
+        # Aplica movimento no eixo Y (inclui gravidade) e verifica colisões
+        self.velocity_y += self.gravity
+        self.rect.y += self.velocity_y
+        for outro in outros_personagens:
+            if pygame.sprite.collide_mask(self, outro):
+                # Reverte movimento em caso de colisão no eixo Y
+                self.rect.y -= self.velocity_y
+                self.velocity_y = 0
+                self.on_ground = True
+
 
         # Aplica a gravidade
         self.velocity_y += self.gravity
@@ -96,17 +109,74 @@ class Personagem(pygame.sprite.Sprite):
             self.velocity_y = 0
             self.on_ground = True  # Personagem está no chão
 
+
+    def update(self, altura_tela, outros_personagens):
+        # Aplica gravidade
+        self.velocity_y += self.gravity
+        self.rect.y += self.velocity_y
+
+        if self.rect.bottom > altura_tela:
+            self.rect.bottom = altura_tela
+            self.velocity_y = 0
+            self.on_ground = True
+
+        # Verifica colisões com outros personagens
+        for outro in outros_personagens:
+            if outro != self:  # Evita verificar colisão consigo mesmo
+                self.verificar_colisao(outro)
+
+        # Impede o personagem de sair da tela
+        if self.rect.bottom > altura_tela:
+            self.rect.bottom = altura_tela
+            self.velocity_y = 0
+            self.on_ground = True
+
+        # Controle do piscar
+        if self.tempo_piscar > 0:
+            self.contador_piscar += 1
+            if self.contador_piscar % 5 == 0:  # Alterna visibilidade a cada 5 quadros
+                self.visivel = not self.visivel
+            self.tempo_piscar -= 1
+        else:
+            self.visivel = True  # Garante que fica visível ao terminar de piscar
+
+        # Controle da animação de ataque
+        if self.atacando:
+            if self.ataque_timer > 0:
+                self.ataque_timer -= 1
+            else:
+                self.finalizar_ataque()
+
+
+
     def verificar_colisao(self, outro):
-        """Verifica a colisão com outro personagem usando máscaras."""
         if pygame.sprite.collide_mask(self, outro):
-            print("Colisão com máscara detectada!")
-            # Ajustar posição com base na direção da colisão
-            if self.rect.right > outro.rect.left and self.rect.left < outro.rect.left:
+            # Ajusta as posições para evitar sobreposição
+            if self.rect.centerx < outro.rect.centerx:
                 self.rect.right = outro.rect.left
-            elif self.rect.left < outro.rect.right and self.rect.right > outro.rect.right:
+            else:
                 self.rect.left = outro.rect.right
-            if self.rect.bottom > outro.rect.top and self.rect.top < outro.rect.top:
-                self.rect.bottom = outro.rect.top
-                self.velocity_y = 0  # Zera a velocidade vertical ao colidir no topo
-            elif self.rect.top < outro.rect.bottom and self.rect.bottom > outro.rect.bottom:
-                self.rect.top = outro.rect.bottom
+
+            if self.rect.bottom <= outro.rect.top + 10:  # Colisão de cima
+                self.rect.bottom = outro.rect.top  # Fixa a posição no topo do outro
+                self.velocity_y = 0  # Anula a velocidade vertical
+                self.on_ground = True  # Considera como se estivesse no chão
+            else:
+                # Colisão lateral
+                deslocamento = 10  # Empurrão mínimo para evitar sobreposição
+                if self.rect.x < outro.rect.x:
+                    self.rect.right = outro.rect.left - deslocamento
+                else:
+                    self.rect.left = outro.rect.right + deslocamento
+
+            # Lógica de ataque
+            if self.atacando:
+                outro.vida -= 10
+                outro.tempo_piscar = 30
+                outro.rect.x += 20 if self.rect.x < outro.rect.x else -20
+                self.rect.x -= 10 if self.rect.x < outro.rect.x else 10
+                self.finalizar_ataque()
+
+    
+
+

@@ -116,6 +116,12 @@ def draw_life_bar(screen, x, y, vida):
     pygame.draw.rect(screen, BRANCO, border_inner, 2)
 
 def jogo(db):
+    # Variáveis de controle para piscar
+    piscar_jogador1 = False
+    piscar_jogador2 = False
+    tempo_piscar_jogador1 = 0
+    tempo_piscar_jogador2 = 0
+    duracao_piscar = 500  # Duração do efeito em milissegundos
 
     db.select_nomes()
     executar = True
@@ -136,27 +142,36 @@ def jogo(db):
 
         # Captura de teclas
         keys = pygame.key.get_pressed()
-        jogador1.mover(keys, '1')
-        jogador2.mover(keys, '2')
+
+        # Atualizar movimentos dos personagens
+        jogador1.mover(keys, '1', [jogador2])  # Passa o outro jogador como referência
+        jogador2.mover(keys, '2', [jogador1])  # Passa o outro jogador como referência
+
 
         # Atualizar personagens (gravidade e limites da tela)
-        jogador1.update(ALTURA_TELA)
-        jogador2.update(ALTURA_TELA)
+        jogador1.update(ALTURA_TELA, [jogador2])
+        jogador2.update(ALTURA_TELA, [jogador1])
+
+
+        # Verificar colisão entre os jogadores
+        jogador1.verificar_colisao(jogador2)
+        jogador2.verificar_colisao(jogador1)
+
 
         # Detectar colisão usando máscaras
         if pygame.sprite.collide_mask(jogador1, jogador2):
             if jogador1.atacando:
                 jogador2.vida -= 10
-                jogador1.finalizar_ataque()
+                jogador2.rect.x += 40  # Recuar para a direita
+                jogador2.velocity_y -= 5  # Pequeno empurrão para cima
+                piscar_jogador2 = True
+                tempo_piscar_jogador2 = pygame.time.get_ticks()
             elif jogador2.atacando:
                 jogador1.vida -= 10
-                jogador2.finalizar_ataque()
-            else:
-                # Reverter posição para impedir sobreposição
-                if jogador1.rect.right > jogador2.rect.left and jogador1.rect.left < jogador2.rect.left:
-                    jogador1.rect.right = jogador2.rect.left
-                elif jogador1.rect.left < jogador2.rect.right and jogador1.rect.right > jogador2.rect.right:
-                    jogador1.rect.left = jogador2.rect.right
+                jogador1.rect.x -= 40  # Recuar para a esquerda
+                jogador1.velocity_y -= 5  # Pequeno empurrão para cima
+                piscar_jogador1 = True
+                tempo_piscar_jogador1 = pygame.time.get_ticks()
 
         # Limpar a tela
         tela.fill(PRETO)
@@ -164,19 +179,23 @@ def jogo(db):
         # Desenhar o fundo
         tela.blit(imagem_fundo, (0, 0))
 
-        # Desenhar todos os sprites
-        todos_sprites.draw(tela)
+        # Controlar o piscar dos jogadores
+        tempo_atual = pygame.time.get_ticks()
+        if piscar_jogador1 and tempo_atual - tempo_piscar_jogador1 < duracao_piscar:
+            pygame.draw.rect(tela, VERMELHO, jogador1.rect)  # Pisca em vermelho
+        else:
+            piscar_jogador1 = False
 
-        # Debug visual: desenhar retângulos de colisão e contornos das máscaras
+        if piscar_jogador2 and tempo_atual - tempo_piscar_jogador2 < duracao_piscar:
+            pygame.draw.rect(tela, VERMELHO, jogador2.rect)  # Pisca em vermelho
+        else:
+            piscar_jogador2 = False
+
+        
         for personagem in personagens:
-            # Desenhar o retângulo da imagem
-            pygame.draw.rect(tela, (0, 255, 0), personagem.rect, 1)  # Verde para o rect da imagem
+            if personagem.visivel:  # Apenas desenha se estiver visível
+                tela.blit(personagem.image, personagem.rect.topleft)
 
-            # Desenhar o contorno da máscara
-            if personagem.mask:
-                offset = (personagem.rect.left, personagem.rect.top)
-                for point in personagem.mask.outline():
-                    pygame.draw.circle(tela, (255, 0, 0), (point[0] + offset[0], point[1] + offset[1]), 1)  # Pontos da máscara em vermelho
 
         draw_life_bar(tela, 50, 20, jogador1.vida)
         draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
@@ -194,6 +213,6 @@ def jogo(db):
 
         # Atualizar a tela
         pygame.display.flip()
-        
+
         # Manter a taxa de quadros
         relogio.tick(FPS)
