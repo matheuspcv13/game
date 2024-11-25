@@ -4,6 +4,11 @@ import sys
 from personagens import Personagem
 from utilidades import carregar_imagem
 from database import Database
+import socket
+import pickle
+import pygame
+import threading
+
 
 # Inicialização do Pygame
 pygame.init()
@@ -115,104 +120,182 @@ def draw_life_bar(screen, x, y, vida):
     border_inner = pygame.Rect(x, y, largura_barra, altura_barra)
     pygame.draw.rect(screen, BRANCO, border_inner, 2)
 
-def jogo(db):
-    # Variáveis de controle para piscar
-    piscar_jogador1 = False
-    piscar_jogador2 = False
-    tempo_piscar_jogador1 = 0
-    tempo_piscar_jogador2 = 0
-    duracao_piscar = 500  # Duração do efeito em milissegundos
+def escutar_servidor(client):
+    global jogador2_posicao, jogador2_ativo
+    while True:
+        try:
+            # Recebe a mensagem do servidor
+            mensagem = client.recv(1024).decode('utf-8')
+            if mensagem:
+                print(f"Mensagem recebida do servidor: {mensagem}")
 
-    db.select_nomes()
-    executar = True
-    todos_sprites = pygame.sprite.Group()
-    personagens = pygame.sprite.Group()
+                # Exemplo de mensagem que pode atualizar o estado do jogo
+                if mensagem.startswith("posicao"):
+                    _, pos_x, pos_y = mensagem.split(",")
+                    jogador2_posicao = (int(pos_x), int(pos_y))
+                    jogador2_ativo = True  # Marca que o jogador 2 está ativo
 
-    # Inicializar personagens
-    jogador1 = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
-    jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
-    personagens.add(jogador1, jogador2)
-    todos_sprites.add(jogador1, jogador2)
+        except:
+            print("Erro ao receber mensagem do servidor.")
+            break
 
-    while executar:
-        for evento in pygame.event.get():
-            if evento.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+def jogo(db, mult=False, jogador2_mult=False):
+    global jogador2_posicao, jogador2_ativo
 
-        # Captura de teclas
-        keys = pygame.key.get_pressed()
+    pygame.init()
+    tela = pygame.display.set_mode((800, 600))
+    relogio = pygame.time.Clock()
+    
+    jogador2_posicao = (0, 0)  # Posição inicial do jogador 2
+    jogador2_ativo = False  # Flag para o jogador 2
 
-        # Atualizar movimentos dos personagens
-        jogador1.mover(keys, '1', [jogador2])  # Passa o outro jogador como referência
-        jogador2.mover(keys, '2', [jogador1])  # Passa o outro jogador como referência
+    # Conectar ao servidor (se for multiplayer)
+    if mult:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(('127.0.0.1', 5000))
+        print("Conectado ao servidor.")
 
+        # Inicia o thread para escutar mensagens do servidor
+        threading.Thread(target=escutar_servidor, args=(client,), daemon=True).start()
 
-        # Atualizar personagens (gravidade e limites da tela)
-        jogador1.update(ALTURA_TELA, [jogador2])
-        jogador2.update(ALTURA_TELA, [jogador1])
-
-
-        # Verificar colisão entre os jogadores
-        jogador1.verificar_colisao(jogador2)
-        jogador2.verificar_colisao(jogador1)
-
-
-        # Detectar colisão usando máscaras
-        if pygame.sprite.collide_mask(jogador1, jogador2):
-            if jogador1.atacando:
-                jogador2.vida -= 10
-                jogador2.rect.x += 40  # Recuar para a direita
-                jogador2.velocity_y -= 5  # Pequeno empurrão para cima
-                piscar_jogador2 = True
-                tempo_piscar_jogador2 = pygame.time.get_ticks()
-            elif jogador2.atacando:
-                jogador1.vida -= 10
-                jogador1.rect.x -= 40  # Recuar para a esquerda
-                jogador1.velocity_y -= 5  # Pequeno empurrão para cima
-                piscar_jogador1 = True
-                tempo_piscar_jogador1 = pygame.time.get_ticks()
-
-        # Limpar a tela
-        tela.fill(PRETO)
-
-        # Desenhar o fundo
-        tela.blit(imagem_fundo, (0, 0))
-
-        # Controlar o piscar dos jogadores
-        tempo_atual = pygame.time.get_ticks()
-        if piscar_jogador1 and tempo_atual - tempo_piscar_jogador1 < duracao_piscar:
-            pygame.draw.rect(tela, VERMELHO, jogador1.rect)  # Pisca em vermelho
-        else:
-            piscar_jogador1 = False
-
-        if piscar_jogador2 and tempo_atual - tempo_piscar_jogador2 < duracao_piscar:
-            pygame.draw.rect(tela, VERMELHO, jogador2.rect)  # Pisca em vermelho
-        else:
-            piscar_jogador2 = False
-
+    # Lógica do personagem
+        jogador = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
+        todos_sprites = pygame.sprite.Group(jogador)
         
-        for personagem in personagens:
-            if personagem.visivel:  # Apenas desenha se estiver visível
-                tela.blit(personagem.image, personagem.rect.topleft)
+        if jogador2_mult:
+            jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
+            todos_sprites.add(jogador2)
+        
+        # Loop principal do jogo
+        while True:
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            # Captura de teclas
+            keys = pygame.key.get_pressed()
+
+            # Mover o jogador 1
+            jogador.mover(keys, '1', [jogador])  
+            jogador.update(800, [jogador])
+
+            # Atualizar o jogador 2 (caso esteja ativo)
+            if jogador2_ativo:
+                jogador2.update(800, [jogador2])
+
+            # Limpar a tela
+            tela.fill(PRETO)
+
+            # Desenhar o fundo
+            tela.blit(imagem_fundo, (0, 0))
+
+            # Desenhar os jogadores
+            for personagem in todos_sprites:
+                if personagem.visivel:
+                    tela.blit(personagem.image, personagem.rect.topleft)
+
+            # Atualizar a tela
+            pygame.display.flip()
+
+            # Manter a taxa de quadros
+            relogio.tick(60)
+    else:
+        piscar_jogador1 = False
+        piscar_jogador2 = False
+        tempo_piscar_jogador1 = 0
+        tempo_piscar_jogador2 = 0
+        duracao_piscar = 500  # Duração do efeito em milissegundos
+
+        db.select_nomes()
+        executar = True
+        todos_sprites = pygame.sprite.Group()
+
+        personagens = pygame.sprite.Group()
+        jogador1 = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
+        jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
+        personagens.add(jogador1, jogador2)
+        todos_sprites.add(jogador1, jogador2)
+
+        while executar:
+            for evento in pygame.event.get():
+                if evento.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+
+            # Captura de teclas
+            keys = pygame.key.get_pressed()
+
+            # Atualizar movimentos dos personagens
+            jogador1.mover(keys, '1', [jogador2])  # Passa o outro jogador como referência
+            jogador2.mover(keys, '2', [jogador1])  # Passa o outro jogador como referência
 
 
-        draw_life_bar(tela, 50, 20, jogador1.vida)
-        draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
+            # Atualizar personagens (gravidade e limites da tela)
+            jogador1.update(ALTURA_TELA, [jogador2])
+            jogador2.update(ALTURA_TELA, [jogador1])
 
-        # Verificar se algum jogador perdeu
-        if jogador1.vida <= 0:
-            resultado = tela_digitar_nome(tela, "Jogador 2", db)
-            if resultado == "tela_inicial":
-                return "tela_inicial"
 
-        if jogador2.vida <= 0:
-            resultado = tela_digitar_nome(tela, "Jogador 1", db)
-            if resultado == "tela_inicial":
-                return "tela_inicial"
+            # Verificar colisão entre os jogadores
+            jogador1.verificar_colisao(jogador2)
+            jogador2.verificar_colisao(jogador1)
 
-        # Atualizar a tela
-        pygame.display.flip()
 
-        # Manter a taxa de quadros
-        relogio.tick(FPS)
+            # Detectar colisão usando máscaras
+            if pygame.sprite.collide_mask(jogador1, jogador2):
+                if jogador1.atacando:
+                    jogador2.vida -= 10
+                    jogador2.rect.x += 40  # Recuar para a direita
+                    jogador2.velocity_y -= 5  # Pequeno empurrão para cima
+                    piscar_jogador2 = True
+                    tempo_piscar_jogador2 = pygame.time.get_ticks()
+                elif jogador2.atacando:
+                    jogador1.vida -= 10
+                    jogador1.rect.x -= 40  # Recuar para a esquerda
+                    jogador1.velocity_y -= 5  # Pequeno empurrão para cima
+                    piscar_jogador1 = True
+                    tempo_piscar_jogador1 = pygame.time.get_ticks()
+
+            # Limpar a tela
+            tela.fill(PRETO)
+
+            # Desenhar o fundo
+            tela.blit(imagem_fundo, (0, 0))
+
+            # Controlar o piscar dos jogadores
+            tempo_atual = pygame.time.get_ticks()
+            if piscar_jogador1 and tempo_atual - tempo_piscar_jogador1 < duracao_piscar:
+                pygame.draw.rect(tela, VERMELHO, jogador1.rect)  # Pisca em vermelho
+            else:
+                piscar_jogador1 = False
+
+            if piscar_jogador2 and tempo_atual - tempo_piscar_jogador2 < duracao_piscar:
+                pygame.draw.rect(tela, VERMELHO, jogador2.rect)  # Pisca em vermelho
+            else:
+                piscar_jogador2 = False
+
+            
+            for personagem in personagens:
+                if personagem.visivel:  # Apenas desenha se estiver visível
+                    tela.blit(personagem.image, personagem.rect.topleft)
+
+
+            draw_life_bar(tela, 50, 20, jogador1.vida)
+            draw_life_bar(tela, LARGURA_TELA - 250, 20, jogador2.vida)
+
+            # Verificar se algum jogador perdeu
+            if jogador1.vida <= 0:
+                resultado = tela_digitar_nome(tela, "Jogador 2", db)
+                if resultado == "tela_inicial":
+                    return "tela_inicial"
+
+            if jogador2.vida <= 0:
+                resultado = tela_digitar_nome(tela, "Jogador 1", db)
+                if resultado == "tela_inicial":
+                    return "tela_inicial"
+
+            # Atualizar a tela
+            pygame.display.flip()
+
+            # Manter a taxa de quadros
+            relogio.tick(FPS)

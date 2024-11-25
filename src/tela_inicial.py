@@ -28,73 +28,66 @@ class Gota:
     def desenhar(self, tela):
         pygame.draw.circle(tela, (0, 255, 255), (self.x, self.y), 5)
 
-
 def tela_inicial(tela, db):
-    
-    fonte_titulo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 25) 
-    fonte_opcao = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 20)  
-    fonte_opcao_hover = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 20) 
-    fonte_tabela_titulo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 10)  
-    fonte_tabela_conteudo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 14)  
+    # Fontes
+    fonte_titulo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 25)
+    fonte_opcao = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 20)
+    fonte_opcao_hover = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 20)
+    fonte_tabela_titulo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 10)
+    fonte_tabela_conteudo = pygame.font.Font("../assets/fonts/PressStart2P-Regular.ttf", 14)
 
+    # Títulos e opções
     titulo = fonte_titulo.render("GD FIGHTERS", True, (255, 255, 255))
     opcao_jogar = fonte_opcao.render("Jogar", True, (255, 255, 255))
+    opcao_multijogador = fonte_opcao.render("Multijogador", True, (255, 255, 255))
     opcao_sair = fonte_opcao.render("Sair", True, (255, 255, 255))
 
-    
-    jogar_rect = opcao_jogar.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 - 50))
-    sair_rect = opcao_sair.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 + 50))
+    # Retângulos das opções
+    jogar_rect = opcao_jogar.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 - 100))
+    multijogador_rect = opcao_multijogador.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2))
+    sair_rect = opcao_sair.get_rect(center=(LARGURA_TELA // 2, ALTURA_TELA // 2 + 100))
 
-    
-    vencedores = db.select_nomes()
-
-  
-    gotas = [Gota() for _ in range(100)]  
-
-    
+    # Animação de fundo
+    gotas = [Gota() for _ in range(100)]
     fundo_imagem = carregar_imagem('assets/imagens/fundo.png')
-    fundo_imagem = aplicar_desfoque(fundo_imagem)  
+    fundo_imagem = aplicar_desfoque(fundo_imagem)
 
     while True:
-        tela.fill((0, 0, 0)) 
-
-        
+        tela.fill((0, 0, 0))
         tela.blit(fundo_imagem, (ALTURA_TELA, LARGURA_TELA))
 
-        
         deslocamento_x = random.randint(-5, 5)  
         deslocamento_y = random.randint(-5, 5)  
 
-        
+        # Animação de título
+        deslocamento_x = random.randint(-5, 5)
+        deslocamento_y = random.randint(-5, 5)
         titulo_rect = titulo.get_rect(center=(LARGURA_TELA // 2 + deslocamento_x, ALTURA_TELA // 4 + deslocamento_y))
 
-       
-        mouse_pos = pygame.mouse.get_pos()
-
-        
-        if jogar_rect.collidepoint(mouse_pos):
-            opcao_jogar = fonte_opcao_hover.render("JOGAR", True, (0, 255, 0)) 
-        else:
-            opcao_jogar = fonte_opcao.render("JOGAR", True, (255, 255, 255)) 
-
-        if sair_rect.collidepoint(mouse_pos):
-            opcao_sair = fonte_opcao_hover.render("SAIR", True, (255, 0, 0))  
-        else:
-            opcao_sair = fonte_opcao.render("SAIR", True, (255, 255, 255))  
-
-        
+        # Atualizar as gotas
         for gota in gotas:
             gota.cair()
             gota.desenhar(tela)
 
-        
-        tela.blit(titulo, titulo_rect)  
+        # Obter posição do mouse
+        mouse_pos = pygame.mouse.get_pos()
 
-       
-        tela.blit(opcao_jogar, (LARGURA_TELA // 2 - opcao_jogar.get_width() // 2, ALTURA_TELA // 2 - 50))
-        tela.blit(opcao_sair, (LARGURA_TELA // 2 - opcao_sair.get_width() // 2, ALTURA_TELA // 2 + 50))
+        # Alterar cor das opções ao passar o mouse
+        if jogar_rect.collidepoint(mouse_pos):
+            opcao_jogar = fonte_opcao_hover.render("JOGAR", True, (0, 255, 0))
+        else:
+            opcao_jogar = fonte_opcao.render("JOGAR", True, (255, 255, 255))
 
-        
+        if multijogador_rect.collidepoint(mouse_pos):
+            opcao_multijogador = fonte_opcao_hover.render("MULTIJOGADOR", True, (0, 255, 0))
+        else:
+            opcao_multijogador = fonte_opcao.render("MULTIJOGADOR", True, (255, 255, 255))
+
+        if sair_rect.collidepoint(mouse_pos):
+            opcao_sair = fonte_opcao_hover.render("SAIR", True, (255, 0, 0))
+        else:
+            opcao_sair = fonte_opcao.render("SAIR", True, (255, 255, 255))
+
         tabela_largura = 230
         tabela_altura = 500
         tabela_x = LARGURA_TELA - tabela_largura - 20
@@ -107,8 +100,8 @@ def tela_inicial(tela, db):
 
         tela.blit(titulo_nome, (tabela_x + 10, tabela_y + 10))  
         tela.blit(titulo_wins, (tabela_x + 180, tabela_y + 10))  
-
-       
+        vencedores = db.select_nomes()
+    
         y_offset = tabela_y + 40
         for i, vencedor in enumerate(vencedores):
             nome = vencedor[1]
@@ -128,14 +121,23 @@ def tela_inicial(tela, db):
             y_offset += 30  
 
 
+        # Desenhar na tela
+        tela.blit(titulo, titulo_rect)
+        tela.blit(opcao_jogar, (LARGURA_TELA // 2 - opcao_jogar.get_width() // 2, ALTURA_TELA // 2 - 100))
+        tela.blit(opcao_multijogador, (LARGURA_TELA // 2 - opcao_multijogador.get_width() // 2, ALTURA_TELA // 2))
+        tela.blit(opcao_sair, (LARGURA_TELA // 2 - opcao_sair.get_width() // 2, ALTURA_TELA // 2 + 100))
+
+        # Eventos
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if evento.type == pygame.MOUSEBUTTONDOWN:  
-                if jogar_rect.collidepoint(evento.pos):  
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                if jogar_rect.collidepoint(evento.pos):
                     return "jogar"
-                elif sair_rect.collidepoint(evento.pos): 
+                elif multijogador_rect.collidepoint(evento.pos):
+                    return "multijogador"
+                elif sair_rect.collidepoint(evento.pos):
                     pygame.quit()
                     sys.exit()
 
