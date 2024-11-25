@@ -1,6 +1,7 @@
 # jogo TAC
 import pygame 
 import sys
+import pickle
 from personagens import Personagem
 from utilidades import carregar_imagem
 from database import Database
