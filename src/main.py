@@ -88,9 +88,11 @@ def main():
             if escolha_multijogador == "criar":
                 print("Iniciando o servidor...")
                 threading.Thread(target=iniciar_servidor).start()
+                vencedor = jogo(db, True)
             elif escolha_multijogador == "entrar":
                 print("Conectando ao servidor...")
-                cliente()
+                threading.Thread(target=cliente).start()
+                jogo(db, True, True)
         else:
             # Encerrar o jogo
             db.fechar_conexao()
