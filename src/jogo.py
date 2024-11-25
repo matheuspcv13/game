@@ -120,39 +120,54 @@ def draw_life_bar(screen, x, y, vida):
     border_inner = pygame.Rect(x, y, largura_barra, altura_barra)
     pygame.draw.rect(screen, BRANCO, border_inner, 2)
 
-def jogo(db, mult = False, jogador2_mult = False):
-    # Variáveis de controle para piscar
-    piscar_jogador1 = False
-    piscar_jogador2 = False
-    tempo_piscar_jogador1 = 0
-    tempo_piscar_jogador2 = 0
-    duracao_piscar = 500  # Duração do efeito em milissegundos
+def escutar_servidor(client):
+    global jogador2_posicao, jogador2_ativo
+    while True:
+        try:
+            # Recebe a mensagem do servidor
+            mensagem = client.recv(1024).decode('utf-8')
+            if mensagem:
+                print(f"Mensagem recebida do servidor: {mensagem}")
 
-    db.select_nomes()
-    executar = True
-    todos_sprites = pygame.sprite.Group()
-    personagens = pygame.sprite.Group()
+                # Exemplo de mensagem que pode atualizar o estado do jogo
+                if mensagem.startswith("posicao"):
+                    _, pos_x, pos_y = mensagem.split(",")
+                    jogador2_posicao = (int(pos_x), int(pos_y))
+                    jogador2_ativo = True  # Marca que o jogador 2 está ativo
 
+        except:
+            print("Erro ao receber mensagem do servidor.")
+            break
+
+def jogo(db, mult=False, jogador2_mult=False):
+    global jogador2_posicao, jogador2_ativo
+
+    pygame.init()
+    tela = pygame.display.set_mode((800, 600))
+    relogio = pygame.time.Clock()
+    
+    jogador2_posicao = (0, 0)  # Posição inicial do jogador 2
+    jogador2_ativo = False  # Flag para o jogador 2
+
+    # Conectar ao servidor (se for multiplayer)
     if mult:
-        # Cliente - Conectar ao servidor e receber dados para o personagem
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(('127.0.0.1', 5000))
+        print("Conectado ao servidor.")
+
+        # Inicia o thread para escutar mensagens do servidor
+        threading.Thread(target=escutar_servidor, args=(client,), daemon=True).start()
+
+    # Lógica do personagem
+        jogador = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
+        todos_sprites = pygame.sprite.Group(jogador)
+        
         if jogador2_mult:
-            jogador = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
-            personagens.add(jogador)
-            todos_sprites.add(jogador)
-        else:
-            jogador = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
-            personagens.add(jogador)
-            todos_sprites.add(jogador)
-
-        # Inicializando o socket para o cliente
-        # server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # server.bind(('127.0.0.1', 5000))
-        # server.listen(1)
-        # print("Aguardando conexão do cliente...")
-        # client_socket, client_address = server.accept()
-        # print(f"Cliente {client_address} conectado!")
-
-        while executar:
+            jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
+            todos_sprites.add(jogador2)
+        
+        # Loop principal do jogo
+        while True:
             for evento in pygame.event.get():
                 if evento.type == pygame.QUIT:
                     pygame.quit()
@@ -161,8 +176,13 @@ def jogo(db, mult = False, jogador2_mult = False):
             # Captura de teclas
             keys = pygame.key.get_pressed()
 
-            jogador.mover(keys, '1', [jogador])  # Movimento do jogador 1
-            jogador.update(ALTURA_TELA, [jogador])
+            # Mover o jogador 1
+            jogador.mover(keys, '1', [jogador])  
+            jogador.update(800, [jogador])
+
+            # Atualizar o jogador 2 (caso esteja ativo)
+            if jogador2_ativo:
+                jogador2.update(800, [jogador2])
 
             # Limpar a tela
             tela.fill(PRETO)
@@ -170,8 +190,8 @@ def jogo(db, mult = False, jogador2_mult = False):
             # Desenhar o fundo
             tela.blit(imagem_fundo, (0, 0))
 
-            # Desenhar ambos os jogadores
-            for personagem in personagens:
+            # Desenhar os jogadores
+            for personagem in todos_sprites:
                 if personagem.visivel:
                     tela.blit(personagem.image, personagem.rect.topleft)
 
@@ -179,10 +199,19 @@ def jogo(db, mult = False, jogador2_mult = False):
             pygame.display.flip()
 
             # Manter a taxa de quadros
-            relogio.tick(FPS)
-
+            relogio.tick(60)
     else:
+        piscar_jogador1 = False
+        piscar_jogador2 = False
+        tempo_piscar_jogador1 = 0
+        tempo_piscar_jogador2 = 0
+        duracao_piscar = 500  # Duração do efeito em milissegundos
 
+        db.select_nomes()
+        executar = True
+        todos_sprites = pygame.sprite.Group()
+
+        personagens = pygame.sprite.Group()
         jogador1 = Personagem(100, 300, 100, 155, imagem_personagem, imagem_personagem_ataque)
         jogador2 = Personagem(600, 300, 100, 155, imagem_personagem2, imagem_personagem2_ataque)
         personagens.add(jogador1, jogador2)
